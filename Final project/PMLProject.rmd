@@ -1,0 +1,216 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "Udaya Bhaskar K"
+date: "Saturday, January 24, 2015"
+output: html_document
+---
+
+**Background Introduction:** 
+
+This particular project contains files which were written and tested in according to the project requirements as mentioned below.
+"
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset)."
+ ### Loading and preprocessing data.
+
+The following code loads the training and testing datasets.
+Then we look at the different variables of the tables.
+```{r,results='hide'}
+training <- read.csv("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+testing <- read.csv("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+set.seed(300)
+library("caret")
+head(summary(training))
+```
+
+This code removes the variables that have more than 19000 datas as "blank" or "NA".
+It removes the variables in both datasets.
+```{r}
+u <- NULL
+for (i in 1:160) { 
+  x <- sum(is.na(training[,i]))
+  y <- sum(training[,i]=="")
+  if ((x > 19000 )|(y > 19000 )){ u <- c(u,i)
+                                  
+  }
+  else {}
+  
+}
+
+training <- training[,-u]
+testing <- testing[,-u]
+```
+Thus the number of variables reduced from 160 variables to 60 variables.
+
+### Data Slicing
+To do some cross-validations in matter to select the best model we will split the data into 10 folds, creating 5 small training datasets and 5 small test datasets.
+```{r}
+ktrain <- createFolds(y=training$classe, k=10,returnTrain=FALSE)
+
+ktrain1 <- as.numeric(unlist(ktrain[1]))
+train1 <- training[ktrain1,]
+
+
+ktrain2 <- as.numeric(unlist(ktrain[2]))
+test1 <- training[ktrain2,]
+
+
+ktrain3 <- as.numeric(unlist(ktrain[3]))
+train2 <- training[ktrain3,]
+
+
+ktrain4 <- as.numeric(unlist(ktrain[4]))
+test2 <- training[ktrain4,]
+
+
+ktrain5 <- as.numeric(unlist(ktrain[5]))
+train3 <- training[ktrain5,]
+
+
+ktrain6 <- as.numeric(unlist(ktrain[6]))
+test3 <- training[ktrain6,]
+
+
+ktrain7 <- as.numeric(unlist(ktrain[7]))
+train4 <- training[ktrain7,]
+
+
+ktrain8 <- as.numeric(unlist(ktrain[8]))
+test4 <- training[ktrain8,]
+
+
+ktrain9 <- as.numeric(unlist(ktrain[9]))
+train5 <- training[ktrain9,]
+
+
+ktrain10 <- as.numeric(unlist(ktrain[10]))
+test5 <- training[ktrain10,]
+
+```
+
+### Model Selection
+
+First, we will try to determine the best variables to determine the classe of exercice. We will do it with the linear discriminant analysis method. This method is fast in term of calculation.
+Then, with the best variables we will use the boosting method *gbm*, this method is very efficient for predictive algorithm but it demands a lot of time in term of calculation.
+
+All information about the data of this project come frome the source  "http://groupware.les.inf.puc-rio.br/har". After having studied the variables, I will start selecting the variables that I think are important to predict the classe.
+
+#### 1. total_accel for belt, forearm, arm, and dumbell.
+
+First, we will look at how the total speed given by the accelerometers predict the classe of exercise.
+```{r}
+train1 <- train1[,c(11,24,37,50,60)]
+test1 <- test1[,c(11,24,37,50,60)]
+fit1 <- train(classe~., method="lda",data=train1)
+pred1 <- predict(fit1,train1)
+confusionMatrix(pred1,train1$classe)
+```
+In sample accuracy is 30.96%.
+```{r}
+pred1bis <- predict(fit1,test1)
+confusionMatrix(pred1bis,test1$classe)
+```
+Out of sample accuracy is 31.6%.
+
+These variables are not good enough.
+
+#### 2. total_accel + accel_xyz for belt, forearm, arm, and dumbell.
+
+Then we will add the speed of each axis given by accelerometers to predict the classe of exercise.
+```{r}
+train2 <- train2[,c(11,15:17,24,28:30,37,41:43,50,54:56,60)]
+test2 <- test2[,c(11,15:17,24,28:30,37,41:43,50,54:56,60)]
+fit2 <- train(classe~., method="lda",data=train2)
+pred2 <- predict(fit2,train2)
+confusionMatrix(pred2,train2$classe)
+```
+In sample accuracy is 53.34%.
+```{r}
+pred2bis <- predict(fit2,test2)
+confusionMatrix(pred2bis,test2$classe)
+```
+Out of sample accuracy is 50.25%.
+
+This model is a little bit better.
+#### 3. total_accel + accel_xyz for belt, forearm, arm, and dumbell and name variable.
+
+Now, we will look if the name can help to predict the classe of exercise.
+```{r}
+train3 <- train3[,c(2,11,15:17,24,28:30,37,41:43,50,54:56,60)]
+test3 <- test3[,c(2,11,15:17,24,28:30,37,41:43,50,54:56,60)]
+fit3 <- train(classe~., method="lda",data=train3)
+pred3 <- predict(fit3,train3)
+confusionMatrix(pred3,train3$classe)
+```
+In sample accuracy is 55.02%.
+```{r}
+pred3bis <- predict(fit3,test3)
+confusionMatrix(pred3bis,test3$classe)
+```
+Out of sample accuracy is 55.99%.
+
+The name variable help a little bit the prediction even if the out of sample accuracy is overevaluated with this sample since it is better than the in sample accuracy.
+
+#### 4. total_accel + roll + pitch + yaw for belt, forearm, arm, and dumbell and name variable.
+
+Now, instead of looking at the acceleration for each axis, the model will include the roll, pitch and yaw measures.
+```{r}
+train4 <- train4[,c(2,8:11,21:24,34:37,47:50,60)]
+test4 <- test4[,c(2,8:11,21:24,34:37,47:50,60)]
+fit4 <- train(classe~., method="lda",data=train4)
+pred4 <- predict(fit4,train4)
+confusionMatrix(pred4,train4$classe)
+```
+In sample accuracy is 58.18%.
+```{r}
+pred4bis <- predict(fit4,test4)
+confusionMatrix(pred4bis,test4$classe)
+```
+Out of sample accuracy is 56.55%.
+
+This variables predict with 56.55% accuracy the classe of exercice withe the linear discriminant analysis. 
+#### 5. total_accel + roll + pitch + yaw for belt, forearm, arm, and dumbell and name variable with boosting method.
+
+Now, we will see how this variables predict with the gbm boosting method.
+```{r}
+train5 <- train5[,c(2,8:11,21:24,34:37,47:50,60)]
+test5 <- test5[,c(2,8:11,21:24,34:37,47:50,60)]
+fit5 <- train(classe~., method="gbm",data=train5,verbose=FALSE)
+pred5 <- predict(fit5,train5)
+confusionMatrix(pred5,train5$classe)
+```
+In sample accuracy is 97.91%.
+```{r}
+pred5bis <- predict(fit5,test5)
+confusionMatrix(pred5bis,test5$classe)
+```
+Out of sample accuracy is 89.45%.
+
+The in sample accuracy is around 98% with this model. It is overfitted since the out of sample accuracy is only around 89.45%.So this model is really good enough for me.
+
+### Selected model with the whole training dataset.
+
+We apply this model to the whole dataset.
+```{r}
+training <- training[,c(2,8:11,21:24,34:37,47:50,60)]
+testing <- testing[,c(2,8:11,21:24,34:37,47:50,60)]
+fit <- train(classe~., method="gbm",data=training,verbose=FALSE)
+pred <- predict(fit,training)
+confusionMatrix(pred,training$classe)
+```
+In sample accuracy is 95.1%.
+
+Given the previous simulations, with a in sample accuracy close to 95.1% for the whole dataset, we can expect a out of sample accuracy around 89%-92%.
+Indeed the prediction model is overfitted, but less overfitted than the previous tests because this training dataset is 5 times bigger than the previous ones.
+
+### Conclusion
+
+To conclude, we predict the test dataset with this model. It gave the good classe for every of 20 exercises tested.
+```{r}
+predict(fit,testing)
+```
+
+Thanking for giving such an opportunity to apply the theory that we learnt on a real world problem.
+
+Reference:
+[1] https://class.coursera.org/predmachlearn-003/human_grading/view/courses/972148/assessments/4/submissions
+[2] http://groupware.les.inf.puc-rio.br/har
